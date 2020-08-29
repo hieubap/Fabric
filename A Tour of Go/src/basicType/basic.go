@@ -1,4 +1,4 @@
-package basicType
+package main
 
 import (
 "fmt"

@@ -5,5 +5,6 @@ import (
 )
 
 func main(){
-	fmt.Printf("helloworld")
+	v := 42
+	fmt.Printf("v is type of %T\n",v)
 }
