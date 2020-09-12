@@ -5,19 +5,16 @@ import (
 "encoding/json"
 "strconv"	
 "github.com/hyperledger/fabric-contract-api-go/contractapi"
-"packageCar"
-"os"
-//"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
 // *********************************************************
 type SmartContract struct {
         contractapi.Contract
+        SizePackage int
 }
 
 // Car describes basic details of what makes up a car
 type Car struct {
-		Key    string
         Make   string `json:"make"`
         Model  string `json:"model"`
         Colour string `json:"colour"`
@@ -30,36 +27,81 @@ type QueryResult struct {
         Key    string `json:"Key"`
         Record *Car
 }
-
-func (s *SmartContract) AddCarOfPackage(ctx contractapi.TransactionContextInterface,p packageCar.PackageCar) error {
-	for _, car := range p.Cars {
-                carAsBytes, _ := json.Marshal(car)
-                err := ctx.GetStub().PutState(car.Key, carAsBytes)
-
-                if err != nil {
-                        return fmt.Errorf("Failed to put to world state. %s", err.Error())
-                }
-        }
-	return nil
+type PackageCar struct {
+	Cars []Car
+	Status bool		`json:"status"`
 }
 
-func (s *SmartContract) Transport(ctx contractapi.TransactionContextInterface,p packageCar.PackageCar){
-	p.Transport()
+func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error { return nil}
+
+func (s *SmartContract) CreatePackageCar(ctx contractapi.TransactionContextInterface) (PackageCar,error){
+	p := PackageCar{}
+	cars := []Car{
+               Car{Make: "Hanoi", Model: "A", Colour: "blue", Owner: "NoOwner"},
+               Car{Make: "Hanoi", Model: "B", Colour: "red", Owner: "NoOwer"},
+               Car{Make: "Hanoi", Model: "C", Colour: "green", Owner: "NoOwer"},
+               Car{Make: "Hanoi", Model: "D", Colour: "yellow", Owner: "NoOwer"},
+               Car{Make: "Hanoi", Model: "E", Colour: "black", Owner: "NoOwer"},
+       }
+	p.Cars = cars
+	p.Status = false 
+	
+	carAsBytes, _ := json.Marshal(p)
+    _ = ctx.GetStub().PutState("PACKAGE"+strconv.Itoa(s.SizePackage), carAsBytes)
+    s.SizePackage = s.SizePackage+1
+    
+    return p,nil
 }
 
-func (s *SmartContract) HandOver(ctx contractapi.TransactionContextInterface,p packageCar.PackageCar,own string) error{
-	p.ChangePackageOwner(own)
-	
-	for _, car := range p.Cars {
-                carAsBytes, _ := json.Marshal(car)
-                err := ctx.GetStub().PutState(car.Key, carAsBytes)
+func (s *SmartContract) Transport(ctx contractapi.TransactionContextInterface,idPkg string) (*PackageCar,error){
+	p := new(PackageCar)
+	pkgAsbytes,err := ctx.GetStub().GetState(idPkg)
+	if err != nil {
+         return p,fmt.Errorf("Failed to read from world state. %s", err.Error())
+    }
 
-                if err != nil {
-                        return fmt.Errorf("Failed to put to world state. %s", err.Error())
-                }
-        }
+    if pkgAsbytes == nil {
+         return p,fmt.Errorf("%s does not exist", idPkg)
+    }
+	_ = json.Unmarshal(pkgAsbytes,p)
+	p.Status = true
 	
-	return nil
+	for i := range p.Cars{
+		p.Cars[i].Status = true
+	}
+	pkgAsbytes, _ = json.Marshal(p)
+	ctx.GetStub().PutState(idPkg,pkgAsbytes)
+		
+	return p,nil
+}
+
+func (s *SmartContract) HandOver(ctx contractapi.TransactionContextInterface,id string,own string) (*PackageCar,error){
+	p := new(PackageCar)
+	pkgAsbytes,err := ctx.GetStub().GetState(id)
+	if err != nil {
+         return p,fmt.Errorf("Failed to read from world state. %s", err.Error())
+    }
+
+    if pkgAsbytes == nil {
+         return p,fmt.Errorf("%s does not exist", id)
+    }
+	_ = json.Unmarshal(pkgAsbytes,p)
+	p.Status = false
+	
+	for i := range p.Cars{
+		p.Cars[i].Status = false
+		p.Cars[i].Owner = own
+	}
+	
+	pkgAsbytes, _ = json.Marshal(p)
+	ctx.GetStub().PutState(id,pkgAsbytes)
+	
+	return p,nil
+}
+
+func (s *SmartContract) TestFunction(ctx contractapi.TransactionContextInterface) (string, error){
+	fmt.Println("in ra dong ket noi thanh cong")
+	return "test thanh cong",nil
 }
 
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
@@ -75,7 +117,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
                 Car{Make: "Tata", Model: "Nano", Colour: "indigo", Owner: "Valeria"},
                 Car{Make: "Holden", Model: "Barina", Colour: "brown", Owner: "Shotaro"},
         }
-
+		
         for i, car := range cars {
                 carAsBytes, _ := json.Marshal(car)
                 err := ctx.GetStub().PutState("CAR"+strconv.Itoa(i), carAsBytes)
@@ -164,57 +206,14 @@ func (s *SmartContract) ChangeCarOwner(ctx contractapi.TransactionContextInterfa
 }
 
 func main() {
-//	p := packageCar.PackageCar{}
-//	p.InitPackage()
-//	p.ShowAll()
-	
-//	car := Car{
-//                Make:   "make",
-//                Model:  "model",
-//                Colour: "colour",
-//                Owner:  "owner",
-//        }
-//
-//    carAsBytes, _ := json.Marshal(car)
-//        
-//	transactioncontext := new(contractapi.TransactionContext)
-//	
-//	if carAsBytes == nil{
-//		fmt.Println("error")
-//	}
-//	if transactioncontext.GetStub() == nil{
-//		fmt.Println("error")
-//	}
-//	
-//	transactioncontext.GetStub().PutState("STATE",carAsBytes)
-//	
-//	carAsBytes,_ = transactioncontext.GetStub().GetState("STATE")
-//	car1 := new(Car)
-//	
-//	json.Unmarshal(carAsBytes,car1)
-//	car2 := *car1
-//	fmt.Println(car2)
-	
-//	s := SmartContract{}
-//	s.InitLedger(transactioncontext)
-	
-	
-//	chaincode, err := contractapi.NewChaincode(new(SmartContract))
-//
-//        if err != nil {
-//                fmt.Printf("Error create fabcar chaincode: %s", err.Error())
-//                return
-//        }
-//
-//        if err := chaincode.Start(); err != nil {
-//                fmt.Printf("Error starting fabcar chaincode: %s", err.Error())
-//        }
+	chaincode, err := contractapi.NewChaincode(new(SmartContract))
 
-//	os.Setenv("CORE_CHAINCODE_ID_NAME","E:/WorkspaceEclipse/Fabcar/src/Fabcar")
-//	if os.Getenv("CORE_CHAINCODE_ID_NAME") == ""{
-//		fmt.Println("null")
-//	}
-	fmt.Println(os.Getenv("CORE_CHAINCODE_ID_NAME"))
-	
+        if err != nil {
+                fmt.Printf("Error create fabcar chaincode: %s", err.Error())
+                return
+        }
+		if err := chaincode.Start(); err != nil {
+                fmt.Printf("Error starting fabcar chaincode: %s", err.Error())
+        }
 	
 }
