@@ -11,6 +11,7 @@ import (
 type SmartContract struct {
         contractapi.Contract
         SizePackage int
+        SizeCar int
 }
 
 // Car describes basic details of what makes up a car
@@ -28,14 +29,14 @@ type QueryResult struct {
         Record *Car
 }
 type PackageCar struct {
-	Cars []Car
 	Status string `json:"status"`
+	IdCars   []string `json:"idcar"`
 }
 
 func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error { return nil}
 
-func (s *SmartContract) CreatePackageCar(ctx contractapi.TransactionContextInterface) (PackageCar,error){
-	p := PackageCar{}
+func (s *SmartContract) CreatePackageCar(ctx contractapi.TransactionContextInterface) (*PackageCar,error){
+	p := new(PackageCar)
 	cars := []Car{
                Car{Make: "Hanoi", Model: "A", Colour: "blue", Owner: "NoOwner",Status:"NoStatus"},
                Car{Make: "Hanoi", Model: "B", Colour: "red", Owner: "NoOwer",Status:"NoStatus"},
@@ -43,78 +44,115 @@ func (s *SmartContract) CreatePackageCar(ctx contractapi.TransactionContextInter
                Car{Make: "Hanoi", Model: "D", Colour: "yellow", Owner: "NoOwer",Status:"NoStatus"},
                Car{Make: "Hanoi", Model: "E", Colour: "black", Owner: "NoOwer",Status:"NoStatus"},
        }
-	p.Cars = cars
-	p.Status = "NoStatus"
-	
+	p.Status = "New"
+	start := s.SizeCar
+	for i := range cars{
+		carAsBytes, _ := json.Marshal(cars[i])
+        err := ctx.GetStub().PutState("CAR"+strconv.Itoa(i+start), carAsBytes)
+		p.IdCars = append(p.IdCars,"CAR"+strconv.Itoa(i+start))
+        if err != nil {
+                return nil,fmt.Errorf("Failed to put to world state. %s", err.Error())
+        }
+        s.SizeCar = s.SizeCar + 1
+	}
 	carAsBytes, _ := json.Marshal(p)
     _ = ctx.GetStub().PutState("PACKAGE"+strconv.Itoa(s.SizePackage), carAsBytes)
     s.SizePackage = s.SizePackage+1
     
     return p,nil
 }
-
+func (s *SmartContract) AddCarsToPkg(ctx contractapi.TransactionContextInterface, idpkg string, carNumber string) ( error) {
+	pkg, _ := ctx.GetStub().GetState(idpkg)
+	tempPkg := new(PackageCar)
+	err1 := json.Unmarshal(pkg, tempPkg)
+	if err1 != nil {
+		return fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
+	}
+	
+	tempPkg.IdCars = append(tempPkg.IdCars, carNumber)
+	pkg, _ = json.Marshal(tempPkg)
+	return ctx.GetStub().PutState(idpkg, pkg)
+}
+func (s *SmartContract) QueryCarPkg(ctx contractapi.TransactionContextInterface,idPkg string) ([]string,error){
+	pkg, _ := ctx.GetStub().GetState(idPkg)
+	tempPkg := new(PackageCar)
+	err1 := json.Unmarshal(pkg, tempPkg)
+	if err1 != nil {
+		return nil,fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
+	}
+	return tempPkg.IdCars,nil
+}
 func (s *SmartContract) Transport(ctx contractapi.TransactionContextInterface,idPkg string) (*PackageCar,error){
-	p := new(PackageCar)
+	
 	pkgAsbytes,err := ctx.GetStub().GetState(idPkg)
 	if err != nil {
-         return p,fmt.Errorf("Failed to read from world state. %s", err.Error())
+         return nil,fmt.Errorf("Failed to read from world state. %s", err.Error())
     }
 
     if pkgAsbytes == nil {
-         return p,fmt.Errorf("%s does not exist", idPkg)
+         return nil,fmt.Errorf("%s does not exist", idPkg)
     }
+	
+	p := new(PackageCar)
 	_ = json.Unmarshal(pkgAsbytes,p)
 	p.Status = "Transport"
 	
-	for i := range p.Cars{
-		p.Cars[i].Status = "Transport"
-	}
-	pkgAsbytes, _ = json.Marshal(p)
-	ctx.GetStub().PutState(idPkg,pkgAsbytes)
+	for i := range p.IdCars{
+		car,_ := s.QueryCar(ctx,p.IdCars[i])
+		car.Status = "Transport"
 		
+		carAsBytes, _ := json.Marshal(car)
+        err := ctx.GetStub().PutState(p.IdCars[i], carAsBytes)
+				
+        if err != nil {
+                return nil,fmt.Errorf("Failed to put to world state. %s", err.Error())
+        }
+	}
+	pkgAsbytes, _ = json.Marshal(&p)
+	ctx.GetStub().PutState(idPkg,pkgAsbytes)
+	
 	return p,nil
 }
 
 func (s *SmartContract) HandOver(ctx contractapi.TransactionContextInterface,id string,own string) (*PackageCar,error){
-	p := new(PackageCar)
 	pkgAsbytes,err := ctx.GetStub().GetState(id)
 	if err != nil {
-         return p,fmt.Errorf("Failed to read from world state. %s", err.Error())
+         return nil,fmt.Errorf("Failed to read from world state. %s", err.Error())
     }
 
     if pkgAsbytes == nil {
-         return p,fmt.Errorf("%s does not exist", id)
+         return nil,fmt.Errorf("%s does not exist", id)
     }
+	
+	p := new(PackageCar)
 	_ = json.Unmarshal(pkgAsbytes,p)
 	p.Status = "HandedOver"
 	
-	for i := range p.Cars{
-		p.Cars[i].Status = "HandedOver"
-		p.Cars[i].Owner = own
+	for i := range p.IdCars{
+		car,_ := s.QueryCar(ctx,p.IdCars[i])
+		car.Status = "HandedOver"
+		car.Owner = own
 	}
 	
-	pkgAsbytes, _ = json.Marshal(p)
+	pkgAsbytes, _ = json.Marshal(&p)
 	ctx.GetStub().PutState(id,pkgAsbytes)
 	
 	return p,nil
 }
 func (s *SmartContract) QueryPkg(ctx contractapi.TransactionContextInterface,id string) (*PackageCar,error){
-	p := new(PackageCar)
+	
 	pkgAsbytes,err := ctx.GetStub().GetState(id)
 	if err != nil {
-         return p,fmt.Errorf("Failed to read from world state. %s", err.Error())
+         return nil,fmt.Errorf("Failed to read from world state. %s", err.Error())
     }
 
     if pkgAsbytes == nil {
-         return p,fmt.Errorf("%s does not exist", id)
+         return nil,fmt.Errorf("%s does not exist", id)
     }
+	p := new(PackageCar)
 	_ = json.Unmarshal(pkgAsbytes,p)
 	
 	return p,nil
-}
-func (s *SmartContract) TestFunction(ctx contractapi.TransactionContextInterface) (string, error){
-	fmt.Println("in ra dong ket noi thanh cong")
-	return "test thanh cong",nil
 }
 
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
@@ -130,14 +168,15 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
                 Car{Make: "Tata", Model: "Nano", Colour: "indigo", Owner: "Valeria"},
                 Car{Make: "Holden", Model: "Barina", Colour: "brown", Owner: "Shotaro"},
         }
-		
+		start := s.SizeCar
         for i, car := range cars {
                 carAsBytes, _ := json.Marshal(car)
-                err := ctx.GetStub().PutState("CAR"+strconv.Itoa(i), carAsBytes)
-
+                err := ctx.GetStub().PutState("CAR"+strconv.Itoa(i+start), carAsBytes)
+				
                 if err != nil {
                         return fmt.Errorf("Failed to put to world state. %s", err.Error())
                 }
+                s.SizeCar = s.SizeCar + 1 
         }
 
         return nil
