@@ -33,8 +33,6 @@ type PackageCar struct {
 	IdCars   []string `json:"idcar"`
 }
 
-func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error { return nil}
-
 func (s *SmartContract) CreatePackageCar(ctx contractapi.TransactionContextInterface) (*PackageCar,error){
 	p := new(PackageCar)
 	cars := []Car{
@@ -60,27 +58,6 @@ func (s *SmartContract) CreatePackageCar(ctx contractapi.TransactionContextInter
     s.SizePackage = s.SizePackage+1
     
     return p,nil
-}
-func (s *SmartContract) AddCarsToPkg(ctx contractapi.TransactionContextInterface, idpkg string, carNumber string) ( error) {
-	pkg, _ := ctx.GetStub().GetState(idpkg)
-	tempPkg := new(PackageCar)
-	err1 := json.Unmarshal(pkg, tempPkg)
-	if err1 != nil {
-		return fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
-	}
-	
-	tempPkg.IdCars = append(tempPkg.IdCars, carNumber)
-	pkg, _ = json.Marshal(tempPkg)
-	return ctx.GetStub().PutState(idpkg, pkg)
-}
-func (s *SmartContract) QueryCarPkg(ctx contractapi.TransactionContextInterface,idPkg string) ([]string,error){
-	pkg, _ := ctx.GetStub().GetState(idPkg)
-	tempPkg := new(PackageCar)
-	err1 := json.Unmarshal(pkg, tempPkg)
-	if err1 != nil {
-		return nil,fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
-	}
-	return tempPkg.IdCars,nil
 }
 func (s *SmartContract) Transport(ctx contractapi.TransactionContextInterface,idPkg string) (*PackageCar,error){
 	
@@ -139,6 +116,28 @@ func (s *SmartContract) HandOver(ctx contractapi.TransactionContextInterface,id 
 	
 	return p,nil
 }
+func (s *SmartContract) AddCarToPkg(ctx contractapi.TransactionContextInterface, idpkg string, carNumber string) ( error) {
+	pkg, _ := ctx.GetStub().GetState(idpkg)
+	tempPkg := new(PackageCar)
+	err1 := json.Unmarshal(pkg, tempPkg)
+	if err1 != nil {
+		return fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
+	}
+	
+	tempPkg.IdCars = append(tempPkg.IdCars, carNumber)
+	pkg, _ = json.Marshal(tempPkg)
+	return ctx.GetStub().PutState(idpkg, pkg)
+}
+func (s *SmartContract) QueryIdCarsPkg(ctx contractapi.TransactionContextInterface,idPkg string) ([]string,error){
+	pkg, _ := ctx.GetStub().GetState(idPkg)
+	tempPkg := new(PackageCar)
+	err1 := json.Unmarshal(pkg, tempPkg)
+	if err1 != nil {
+		return nil,fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
+	}
+	return tempPkg.IdCars,nil
+}
+
 func (s *SmartContract) QueryPkg(ctx contractapi.TransactionContextInterface,id string) (*PackageCar,error){
 	
 	pkgAsbytes,err := ctx.GetStub().GetState(id)
