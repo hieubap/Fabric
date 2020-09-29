@@ -1,0 +1,383 @@
+peer:
+
+    id: jdoe
+
+    networkId: dev
+
+    listenAddress: 0.0.0.0:7051
+
+    address: 0.0.0.0:7051
+
+    addressAutoDetect: false
+
+    keepalive:
+        interval: 7200s
+        timeout: 20s
+        minInterval: 60s
+        client:
+            interval: 60s
+            timeout: 20s
+        deliveryClient:
+            interval: 60s
+            timeout: 20s
+
+
+    gossip:
+        bootstrap: 127.0.0.1:7051
+
+        useLeaderElection: false
+        orgLeader: true
+
+        membershipTrackerInterval: 5s
+
+        endpoint:
+        maxBlockCountToStore: 10
+        maxPropagationBurstLatency: 10ms
+        maxPropagationBurstSize: 10
+        propagateIterations: 1
+        propagatePeerNum: 3
+        pullInterval: 4s
+        pullPeerNum: 3
+        # Determines frequency of pulling state info messages from peers(unit: second)
+        requestStateInfoInterval: 4s
+        # Determines frequency of pushing state info messages to peers(unit: second)
+        publishStateInfoInterval: 4s
+        # Maximum time a stateInfo message is kept until expired
+        stateInfoRetentionInterval:
+        # Time from startup certificates are included in Alive messages(unit: second)
+        publishCertPeriod: 10s
+        # Should we skip verifying block messages or not (currently not in use)
+        skipBlockVerification: false
+        # Dial timeout(unit: second)
+        dialTimeout: 3s
+        # Connection timeout(unit: second)
+        connTimeout: 2s
+        # Buffer size of received messages
+        recvBuffSize: 20
+        # Buffer size of sending messages
+        sendBuffSize: 200
+        # Time to wait before pull engine processes incoming digests (unit: second)
+        # Should be slightly smaller than requestWaitTime
+        digestWaitTime: 1s
+        # Time to wait before pull engine removes incoming nonce (unit: milliseconds)
+        # Should be slightly bigger than digestWaitTime
+        requestWaitTime: 1500ms
+        # Time to wait before pull engine ends pull (unit: second)
+        responseWaitTime: 2s
+        # Alive check interval(unit: second)
+        aliveTimeInterval: 5s
+        # Alive expiration timeout(unit: second)
+        aliveExpirationTimeout: 25s
+        # Reconnect interval(unit: second)
+        reconnectInterval: 25s
+        # Max number of attempts to connect to a peer
+        maxConnectionAttempts: 120
+        # Message expiration factor for alive messages
+        msgExpirationFactor: 20
+        # This is an endpoint that is published to peers outside of the organization.
+        # If this isn't set, the peer will not be known to other organizations.
+        externalEndpoint:
+        # Leader election service configuration
+        election:
+            # Longest time peer waits for stable membership during leader election startup (unit: second)
+            startupGracePeriod: 15s
+            # Interval gossip membership samples to check its stability (unit: second)
+            membershipSampleInterval: 1s
+            # Time passes since last declaration message before peer decides to perform leader election (unit: second)
+            leaderAliveThreshold: 10s
+            # Time between peer sends propose message and declares itself as a leader (sends declaration message) (unit: second)
+            leaderElectionDuration: 5s
+
+        pvtData:
+            pullRetryThreshold: 60s
+            transientstoreMaxBlockRetention: 1000
+            pushAckTimeout: 3s
+            btlPullMargin: 10
+            reconcileBatchSize: 10
+            reconcileSleepInterval: 1m
+            reconciliationEnabled: true
+            skipPullingInvalidTransactionsDuringCommit: false
+            implicitCollectionDisseminationPolicy:
+               requiredPeerCount: 0
+               maxPeerCount: 1
+
+        # Gossip state transfer related configuration
+        state:
+            enabled: false
+            checkInterval: 10s
+            responseTimeout: 3s
+            batchSize: 10
+            # blockBufferSize reflects the size of the re-ordering buffer
+            # which captures blocks and takes care to deliver them in order
+            # down to the ledger layer. The actual buffer size is bounded between
+            # 0 and 2*blockBufferSize, each channel maintains its own buffer
+            blockBufferSize: 20
+            # maxRetries maximum number of re-tries to ask
+            # for single state transfer request
+            maxRetries: 3
+
+    # TLS Settings
+    tls:
+        # Require server-side TLS
+        enabled:  false
+        clientAuthRequired: false
+        cert:
+            file: tls/server.crt
+        key:
+            file: tls/server.key
+        rootcert:
+            file: tls/ca.crt
+        clientRootCAs:
+            files:
+              - tls/ca.crt
+        clientKey:
+            file:
+        clientCert:
+            file:
+
+    authentication:
+        timewindow: 15m
+
+    fileSystemPath: /var/hyperledger/production
+
+    BCCSP:
+        Default: SW
+        # Settings for the SW crypto provider (i.e. when DEFAULT: SW)
+        SW:
+            Hash: SHA2
+            Security: 256
+            # Location of Key Store
+            FileKeyStore:
+                # If "", defaults to 'mspConfigPath'/keystore
+                KeyStore:
+        # Settings for the PKCS#11 crypto provider (i.e. when DEFAULT: PKCS11)
+        PKCS11:
+            # Location of the PKCS11 module library
+            Library:
+            # Token Label
+            Label:
+            # User PIN
+            Pin:
+            Hash:
+            Security:
+
+    # Path on the file system where peer will find MSP local configurations
+    mspConfigPath: msp
+
+    localMspId: SampleOrg
+
+    # CLI common client config options
+    client:
+        # connection timeout
+        connTimeout: 3s
+
+    deliveryclient:
+        reconnectTotalTimeThreshold: 3600s
+
+        connTimeout: 3s
+
+        reConnectBackoffThreshold: 3600s
+
+        addressOverrides:
+
+    localMspType: bccsp
+
+    profile:
+        enabled:     false
+        listenAddress: 0.0.0.0:6060
+
+
+    handlers:
+        authFilters:
+          -
+            name: DefaultAuth
+          -
+            name: ExpirationCheck    # This filter checks identity x509 certificate expiration
+        decorators:
+          -
+            name: DefaultDecorator
+        endorsers:
+          escc:
+            name: DefaultEndorsement
+            library:
+        validators:
+          vscc:
+            name: DefaultValidation
+            library:
+
+    validatorPoolSize:
+
+    discovery:
+        enabled: true
+        authCacheEnabled: true
+        authCacheMaxSize: 1000
+        authCachePurgeRetentionRatio: 0.75
+        orgMembersAllowedAccess: false
+
+    limits:
+        concurrency:
+            endorserService: 2500
+            deliverService: 2500
+
+###############################################################################
+#
+#    VM section
+#
+###############################################################################
+vm:
+
+    # Endpoint of the vm management system.  For docker can be one of the following in general
+    # unix:///var/run/docker.sock
+    # http://localhost:2375
+    # https://localhost:2376
+    endpoint: unix:///var/run/docker.sock
+
+    # settings for docker vms
+    docker:
+        tls:
+            enabled: false
+            ca:
+                file: docker/ca.crt
+            cert:
+                file: docker/tls.crt
+            key:
+                file: docker/tls.key
+
+        # Enables/disables the standard out/err from chaincode containers for
+        # debugging purposes
+        attachStdout: false
+
+        hostConfig:
+            NetworkMode: host
+            Dns:
+               # - 192.168.0.1
+            LogConfig:
+                Type: json-file
+                Config:
+                    max-size: "50m"
+                    max-file: "5"
+            Memory: 2147483648
+
+###############################################################################
+#
+#    Chaincode section
+#
+###############################################################################
+chaincode:
+
+    id:
+        path:
+        name:
+
+    builder: $(DOCKER_NS)/fabric-ccenv:$(TWO_DIGIT_VERSION)
+
+    pull: false
+
+    golang:
+        runtime: $(DOCKER_NS)/fabric-baseos:$(TWO_DIGIT_VERSION)
+
+        dynamicLink: false
+
+    java:
+        runtime: $(DOCKER_NS)/fabric-javaenv:$(TWO_DIGIT_VERSION)
+
+    node:
+        runtime: $(DOCKER_NS)/fabric-nodeenv:$(TWO_DIGIT_VERSION)
+
+    externalBuilders: []
+
+    installTimeout: 300s
+
+    startuptimeout: 300s
+
+    executetimeout: 30s
+
+    mode: net
+
+    keepalive: 0
+
+    # enabled system chaincodes
+    system:
+        _lifecycle: enable
+        cscc: enable
+        lscc: enable
+        escc: enable
+        vscc: enable
+        qscc: enable
+
+    # Logging section for the chaincode container
+    logging:
+      level:  info
+      shim:   warning
+      format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
+###############################################################################
+#
+#    Ledger section - ledger configuration encompasses both the blockchain
+#    and the state
+#
+###############################################################################
+ledger:
+
+  blockchain:
+
+  state:
+    stateDatabase: goleveldb
+    totalQueryLimit: 100000
+    couchDBConfig:
+       couchDBAddress: 127.0.0.1:5984
+       username:
+       password:
+       maxRetries: 3
+       maxRetriesOnStartup: 10
+       requestTimeout: 35s
+       internalQueryLimit: 1000
+       maxBatchUpdateSize: 1000
+       warmIndexesAfterNBlocks: 1
+       createGlobalChangesDB: false
+       cacheSize: 64
+
+  history:
+    enableHistoryDatabase: true
+
+  pvtdataStore:
+    collElgProcMaxDbBatchSize: 5000
+    collElgProcDbBatchesInterval: 1000
+
+###############################################################################
+#
+#    Operations section
+#
+###############################################################################
+operations:
+    listenAddress: 127.0.0.1:9443
+
+    tls:
+        enabled: false
+
+        cert:
+            file:
+
+        key:
+            file:
+
+        clientAuthRequired: false
+
+        clientRootCAs:
+            files: []
+
+###############################################################################
+#
+#    Metrics section
+#
+###############################################################################
+metrics:
+    provider: disabled
+    statsd:
+        network: udp
+
+        address: 127.0.0.1:8125
+
+        writeInterval: 10s
+
+        prefix:
