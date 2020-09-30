@@ -32,7 +32,7 @@ type PackagePhone struct{
 	Status string
 	IdPhone []string
 }
-type PriceImport struct {
+type PricePackage struct {
         Name    string `json:"name"`
         Price   int    `json:"salary"`
 }
@@ -60,7 +60,7 @@ func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) (error
     return nil
 }
 
-func (s *SmartContract) CreatePackagePhone(ctx contractapi.TransactionContextInterface,name string) (*PackagePhone,error){
+func (s *SmartContract) CreatePackagePhone(ctx contractapi.TransactionContextInterface,name string,price int) (*PackagePhone,error){
 	p := new(PackagePhone)
 	phones := []Phone{
                Phone{Name: name , Owner: "factory", Price: 5000 , UserTime: 0 ,Status:"NewProducts"},
@@ -80,6 +80,13 @@ func (s *SmartContract) CreatePackagePhone(ctx contractapi.TransactionContextInt
 	}
 	phoneAsBytes, _ := json.Marshal(p)
     _ = ctx.GetStub().PutState("PACKAGE"+strconv.Itoa(s.SizePackage), phoneAsBytes)
+    
+    private := new(PricePackage)
+    private.Name = name
+    private.Price = price
+    priAsbyte,_ := json.Marshal(private)
+    ctx.GetStub().PutPrivateData("importprice","PACKAGE0",priAsbyte)
+    
     s.SizePackage = s.SizePackage+1
     
     return p,nil
@@ -111,6 +118,18 @@ func (s *SmartContract) AddPhoneToPkg(ctx contractapi.TransactionContextInterfac
 	tempPkg.IdPhone = append(tempPkg.IdPhone, idphone)
 	pkg, _ = json.Marshal(tempPkg)
 	return ctx.GetStub().PutState(idpkg, pkg)
+}
+
+func (s *SmartContract) QueryPackagePrice(ctx contractapi.TransactionContextInterface, idpkg string) (*PricePackage,error) {
+	pkg, _ := ctx.GetStub().GetPrivateData("importprice",idpkg)
+	tempPkg := new(PricePackage)
+	err1 := json.Unmarshal(pkg, tempPkg)
+	
+	if err1 != nil {
+		return nil,fmt.Errorf("Adding C2P Can not read data ! %s", err1.Error())
+	}
+	
+	return tempPkg,nil
 }
 
 func (s *SmartContract) HandOver(ctx contractapi.TransactionContextInterface,id string,own string) (*PackagePhone,error){
@@ -215,7 +234,7 @@ type QueryResult struct {
         Record *Phone
 }
 func (s *SmartContract) QueryAllPhones(ctx contractapi.TransactionContextInterface) ([]QueryResult, error) {
-        startKey := "PHONE00"
+        startKey := "PHONE0"
         endKey := "PHONE99"
 
         resultsIterator, err := ctx.GetStub().GetStateByRange(startKey, endKey)
